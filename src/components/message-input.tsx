@@ -7,12 +7,18 @@ type Props = {
 export default function MessageInput({ input, setInput, sendMessage }: Props) {
   return (
     <div className="flex gap-2">
-      <input
+      <textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault(); // stop newline
+            sendMessage();
+          }
+        }}
         placeholder="Type a message..."
-        className="flex-1 border rounded p-2 bg-white text-black"
+        className="flex-1 border rounded p-2 bg-white text-black resize-none"
+        rows={1}
       />
       <button
         onClick={sendMessage}
