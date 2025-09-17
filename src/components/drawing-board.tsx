@@ -1,23 +1,31 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import { AiOutlineRedo, AiOutlineUndo } from "react-icons/ai";
 
-type Point = { x: number; y: number }; // absolute pixels
+type Point = { x: number; y: number };
 type Stroke = { points: Point[]; color: string; size: number };
+type UndoAction = {
+	type: "stroke" | "clear";
+	strokes: Stroke[]; // strokes involved in this action
+};
 
 export default function DrawingBoard() {
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
 
-	const [drawing, setDrawing] = useState(false);
 	const [penColor, setPenColor] = useState("#000000");
 	const [penSize, setPenSize] = useState(5);
 	const [showPenDropdown, setShowPenDropdown] = useState(false);
 
+	const drawingRef = useRef(false);
 	const strokesRef = useRef<Stroke[]>([]);
+	const undoneRef = useRef<Stroke[]>([]);
 	const currentStrokeRef = useRef<Stroke>({ points: [], color: penColor, size: penSize });
 
-	// Setup canvas + ResizeObserver
+	const undoStack = useRef<UndoAction[]>([]);
+	const redoStack = useRef<UndoAction[]>([]);
+
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
@@ -31,33 +39,48 @@ export default function DrawingBoard() {
 
 		const resizeCanvas = () => {
 			if (!canvas) return;
-			
+
 			const oldWidth = canvas.width;
 			const oldHeight = canvas.height;
-		
+
 			canvas.width = canvas.offsetWidth;
 			canvas.height = canvas.offsetHeight;
-		
-			const scaleX = canvas.width / oldWidth;
-			const scaleY = canvas.height / oldHeight;
-		
+
+			const scaleX = oldWidth ? canvas.width / oldWidth : 1;
+			const scaleY = oldHeight ? canvas.height / oldHeight : 1;
+
 			// Scale all strokes
-			strokesRef.current.forEach(stroke => {
-				stroke.points.forEach(p => {
+			strokesRef.current.forEach((stroke) => {
+				stroke.points.forEach((p) => {
 					p.x *= scaleX;
 					p.y *= scaleY;
 				});
 			});
-		
+
 			redrawAll();
-		};		
+		};
 
 		resizeCanvas();
-
 		const observer = new ResizeObserver(resizeCanvas);
 		observer.observe(canvas.parentElement!);
 
-		return () => observer.disconnect();
+		// Keyboard shortcuts for Undo/Redo
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.ctrlKey && e.key.toLowerCase() === "z") {
+				e.preventDefault();
+				if (e.shiftKey)
+					redo();
+				else
+					undo();
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+
+		return () => {
+			observer.disconnect();
+			window.removeEventListener("keydown", handleKeyDown);
+		};
 	}, []);
 
 	const getCoords = (e: React.MouseEvent | React.TouchEvent) => {
@@ -74,18 +97,16 @@ export default function DrawingBoard() {
 			clientY = e.clientY;
 		}
 
-		return { x: clientX - rect.left, y: clientY - rect.top }; // absolute pixels
+		return { x: clientX - rect.left, y: clientY - rect.top };
 	};
 
 	const drawPoint = (ctx: CanvasRenderingContext2D, strokeSize: number, p: Point, prev: Point | null) => {
-		// Draw circle at point
 		ctx.beginPath();
 		ctx.arc(p.x, p.y, strokeSize / 2, 0, Math.PI * 2);
 		ctx.fill();
 
 		if (!prev) return;
 
-		// Interpolate between points to fill gaps
 		const dx = p.x - prev.x;
 		const dy = p.y - prev.y;
 		const distance = Math.hypot(dx, dy);
@@ -97,7 +118,7 @@ export default function DrawingBoard() {
 			ctx.arc(x, y, strokeSize / 2, 0, Math.PI * 2);
 			ctx.fill();
 		}
-	}
+	};
 
 	const drawLastPoint = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
 		const len = stroke.points.length;
@@ -105,16 +126,15 @@ export default function DrawingBoard() {
 
 		const p = stroke.points[len - 1];
 		const prev = len > 1 ? stroke.points[len - 2] : null;
-		drawPoint(ctx, stroke.size, p, prev);		
-	}
+		drawPoint(ctx, stroke.size, p, prev);
+	};
 
-	// Draw a stroke with smooth interpolation
 	const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
+		ctx.fillStyle = stroke.color;
+		if (stroke.points.length === 0) return;
 		drawPoint(ctx, stroke.size, stroke.points[0], null);
 		for (let i = 1; i < stroke.points.length; i++) {
-			const prev = stroke.points[i - 1];
-			const p = stroke.points[i];
-			drawPoint(ctx, stroke.size, p, prev);
+			drawPoint(ctx, stroke.size, stroke.points[i], stroke.points[i - 1]);
 		}
 	};
 
@@ -122,33 +142,39 @@ export default function DrawingBoard() {
 		const coords = getCoords(e);
 		if (!ctxRef.current || !coords) return;
 
-		setDrawing(true);
+		drawingRef.current = true;
 		ctxRef.current.fillStyle = penColor;
-		currentStrokeRef.current = { points: [coords], color: penColor, size: penSize };
+		currentStrokeRef.current = { points: [], color: penColor, size: penSize };
+		undoneRef.current = []; // reset redo stack
 		draw(e);
 	};
 
 	const draw = (e: React.MouseEvent | React.TouchEvent) => {
-		if (!drawing || !ctxRef.current) return;
+		if (!drawingRef.current || !ctxRef.current) return;
 		const coords = getCoords(e);
 		if (!coords) return;
 
 		const stroke = currentStrokeRef.current;
 		stroke.points.push(coords);
 
-		// drawStroke(ctxRef.current, stroke);
 		drawLastPoint(ctxRef.current, stroke);
 	};
 
 	const stopDrawing = () => {
-		if (!drawing) return;
-		setDrawing(false);
-
-		if (currentStrokeRef.current.points.length > 0) {
-			strokesRef.current.push(currentStrokeRef.current);
+		if (!drawingRef.current) return;
+		drawingRef.current = false;
+	
+		const stroke = currentStrokeRef.current;
+		if (stroke.points.length > 0) {
+			strokesRef.current.push(stroke);
+	
+			// Push to undo stack
+			undoStack.current.push({ type: "stroke", strokes: [stroke] });
+			redoStack.current = []; // clear redo stack
+	
 			currentStrokeRef.current = { points: [], color: penColor, size: penSize };
 		}
-	};
+	};	
 
 	const redrawAll = () => {
 		const canvas = canvasRef.current;
@@ -160,11 +186,47 @@ export default function DrawingBoard() {
 	};
 
 	const clearCanvas = () => {
+		if (strokesRef.current.length === 0) return;
+
+		// Save current strokes as an undoable action
+		undoStack.current.push({ type: "clear", strokes: [...strokesRef.current] });
+		redoStack.current = []; // clear redo stack
+
 		strokesRef.current = [];
 		currentStrokeRef.current = { points: [], color: penColor, size: penSize };
+
 		const canvas = canvasRef.current;
 		const ctx = ctxRef.current;
 		if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
+	};
+
+	const undo = () => {
+		if (undoStack.current.length === 0) return;
+		const lastAction = undoStack.current.pop()!;
+		redoStack.current.push(lastAction);
+
+		if (lastAction.type === "stroke") {
+			strokesRef.current = strokesRef.current.slice(0, -lastAction.strokes.length);
+		} else if (lastAction.type === "clear") {
+			strokesRef.current = [...lastAction.strokes];
+		}
+
+		redrawAll();
+	};
+
+	// Redo
+	const redo = () => {
+		if (redoStack.current.length === 0) return;
+		const action = redoStack.current.pop()!;
+		undoStack.current.push(action);
+
+		if (action.type === "stroke") {
+			strokesRef.current.push(...action.strokes);
+		} else if (action.type === "clear") {
+			strokesRef.current = [];
+		}
+
+		redrawAll();
 	};
 
 	return (
@@ -173,17 +235,40 @@ export default function DrawingBoard() {
 			<div className="flex items-center justify-between mb-4">
 				<h1 className="text-3xl font-bold text-black">🎨 Drawing Board</h1>
 				<div className="flex items-center gap-2">
+					<div className="flex items-center gap-2">
+						{/* Undo button */}
+						<button
+							onClick={undo}
+							className="relative group bg-gray-300 text-black px-4 py-2 rounded shadow flex items-center justify-center"
+						>
+							<AiOutlineUndo size={20} />
+							<span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+								Undo (Ctrl + Z)
+							</span>
+						</button>
+
+						{/* Redo button */}
+						<button
+							onClick={redo}
+							className="relative group bg-gray-300 text-black px-4 py-2 rounded shadow flex items-center justify-center"
+						>
+							<AiOutlineRedo size={20} />
+							<span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+								Redo (Ctrl + Shift + Z)
+							</span>
+						</button>
+					</div>
 
 					{/* Pen size dropdown */}
 					<div className="relative">
 						<button
-							className="px-3 py-1 border-2 border-gray-300 rounded shadow bg-white"
+							className="text-black px-3 py-1 border-2 border-gray-300 rounded shadow bg-white"
 							onClick={() => setShowPenDropdown(!showPenDropdown)}
 						>
 							Size: {penSize}
 						</button>
 						{showPenDropdown && (
-							<div className="absolute mt-1 border-2 border-gray-300 rounded shadow bg-white z-10">
+							<div className="text-black absolute mt-1 border-2 border-gray-300 rounded shadow bg-white z-10">
 								{[1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((size) => (
 									<div
 										key={size}
@@ -191,7 +276,8 @@ export default function DrawingBoard() {
 											setPenSize(size);
 											setShowPenDropdown(false);
 										}}
-										className={`px-4 py-1 cursor-pointer hover:bg-gray-100 ${penSize === size ? "bg-gray-200 font-bold" : ""}`}
+										className={`px-4 py-1 cursor-pointer hover:bg-gray-100 ${penSize === size ? "bg-gray-200" : ""
+											}`}
 									>
 										{size}
 									</div>
