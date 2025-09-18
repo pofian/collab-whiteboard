@@ -43,15 +43,23 @@ export default function DrawingBoard() {
 		const resizeCanvas = () => {
 			if (!canvas) return;
 
-			canvas.width = canvas.offsetWidth;
-			canvas.height = canvas.offsetHeight;
+			// Use getBoundingClientRect to get actual rendered size
+			const { width, height } = canvas.getBoundingClientRect();
+			canvas.width = width;
+			canvas.height = height;
 
 			redrawAll();
 		};
 
+		// Initial sizing
 		resizeCanvas();
+
+		// Observe container size changes
 		const observer = new ResizeObserver(resizeCanvas);
 		observer.observe(canvas.parentElement!);
+
+		// Also handle window resize as extra safety
+		window.addEventListener("resize", resizeCanvas);
 
 		// Keyboard shortcuts for Undo/Redo
 		const handleKeyDown = (e: KeyboardEvent) => {
@@ -82,6 +90,7 @@ export default function DrawingBoard() {
 
 		return () => {
 			observer.disconnect();
+			window.removeEventListener("resize", resizeCanvas);
 			window.removeEventListener("keydown", handleKeyDown);
 			socket?.removeEventListener("message", handleMessage);
 		};
@@ -111,21 +120,21 @@ export default function DrawingBoard() {
 		const canvas = canvasRef.current!;
 		const px = p.x * canvas.width;  // convert back to pixels
 		const py = p.y * canvas.height;
-	
+
 		ctx.beginPath();
 		ctx.arc(px, py, strokeSize / 2, 0, Math.PI * 2);
 		ctx.fill();
-	
+
 		if (!prev) return;
-	
+
 		const prevX = prev.x * canvas.width;
 		const prevY = prev.y * canvas.height;
-	
+
 		const dx = px - prevX;
 		const dy = py - prevY;
 		const distance = Math.hypot(dx, dy);
 		const step = 0.2 * strokeSize / distance;
-	
+
 		for (let t = 0; t < 1; t += step) {
 			const x = prevX + dx * t;
 			const y = prevY + dy * t;
@@ -134,7 +143,7 @@ export default function DrawingBoard() {
 			ctx.fill();
 		}
 	};
-	
+
 	const drawLastPoint = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
 		const len = stroke.points.length;
 		if (len === 0) return;
@@ -247,13 +256,14 @@ export default function DrawingBoard() {
 	};
 
 	return (
-		<div className="flex flex-col h-screen p-6 bg-white">
+		<div className="flex flex-col h-full pl-10 px-6 pt-4 pb-4 box-border min-h-0">
 			{/* Header + Buttons */}
-			<div className="flex items-center justify-between mb-4">
+			<div className="flex items-center justify-between mb-2"> 
 				<h1 className="text-3xl font-bold text-black">🎨 Drawing Board</h1>
+	
 				<div className="flex items-center gap-2">
+					{/* Undo / Redo */}
 					<div className="flex items-center gap-2">
-						{/* Undo button */}
 						<button
 							onClick={undo}
 							className="relative group bg-gray-300 text-black px-4 py-2 rounded shadow flex items-center justify-center"
@@ -263,8 +273,7 @@ export default function DrawingBoard() {
 								Undo (Ctrl + Z)
 							</span>
 						</button>
-
-						{/* Redo button */}
+	
 						<button
 							onClick={redo}
 							className="relative group bg-gray-300 text-black px-4 py-2 rounded shadow flex items-center justify-center"
@@ -275,8 +284,8 @@ export default function DrawingBoard() {
 							</span>
 						</button>
 					</div>
-
-					{/* Pen size dropdown */}
+	
+					{/* Pen Size */}
 					<div className="relative">
 						<button
 							className="text-black px-3 py-1 border-2 border-gray-300 rounded shadow bg-white"
@@ -285,16 +294,12 @@ export default function DrawingBoard() {
 							Size: {penSize}
 						</button>
 						{showPenDropdown && (
-							<div className="text-black absolute mt-1 border-2 border-gray-300 rounded shadow bg-white z-10">
-								{[1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20].map((size) => (
+							<div className="absolute mt-1 border-2 border-gray-300 rounded shadow bg-white z-10">
+								{[1,2,3,4,5,6,8,10,12,15,20].map(size => (
 									<div
 										key={size}
-										onClick={() => {
-											setPenSize(size);
-											setShowPenDropdown(false);
-										}}
-										className={`px-4 py-1 cursor-pointer hover:bg-gray-100 ${penSize === size ? "bg-gray-200" : ""
-											}`}
+										onClick={() => { setPenSize(size); setShowPenDropdown(false); }}
+										className={`px-4 py-1 cursor-pointer hover:bg-gray-100 ${penSize===size?"bg-gray-200":""}`}
 									>
 										{size}
 									</div>
@@ -302,8 +307,8 @@ export default function DrawingBoard() {
 							</div>
 						)}
 					</div>
-
-					{/* Color picker */}
+	
+					{/* Color Picker */}
 					<input
 						type="color"
 						value={penColor}
@@ -311,8 +316,8 @@ export default function DrawingBoard() {
 						className="w-10 h-10 p-0 border-2 border-gray-300 rounded shadow cursor-pointer"
 						title="Select Pen Color"
 					/>
-
-					{/* Clear button */}
+	
+					{/* Clear Button */}
 					<button
 						onClick={clearCanvas}
 						className="bg-red-500 text-white px-4 py-2 rounded shadow"
@@ -321,12 +326,12 @@ export default function DrawingBoard() {
 					</button>
 				</div>
 			</div>
-
-			{/* Drawing box */}
-			<div className="flex-1 border-2 border-gray-300 rounded-lg relative">
+	
+			{/* Canvas */}
+			<div className="flex-1 border-2 border-gray-300 rounded-lg p-2 box-border min-h-0 overflow-hidden">
 				<canvas
 					ref={canvasRef}
-					className="w-full h-full"
+					className="w-full h-full block"
 					onMouseDown={startDrawing}
 					onMouseMove={draw}
 					onMouseUp={stopDrawing}
