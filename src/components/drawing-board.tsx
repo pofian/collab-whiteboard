@@ -32,40 +32,27 @@ export default function DrawingBoard() {
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
-	
+
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
-	
+
 		ctx.lineCap = "round";
 		ctx.lineJoin = "round";
 		ctxRef.current = ctx;
-	
+
 		const resizeCanvas = () => {
 			if (!canvas) return;
-	
-			const oldWidth = canvas.width;
-			const oldHeight = canvas.height;
-	
+
 			canvas.width = canvas.offsetWidth;
 			canvas.height = canvas.offsetHeight;
-	
-			const scaleX = oldWidth ? canvas.width / oldWidth : 1;
-			const scaleY = oldHeight ? canvas.height / oldHeight : 1;
-	
-			strokesRef.current.forEach((stroke) => {
-				stroke.points.forEach((p) => {
-					p.x *= scaleX;
-					p.y *= scaleY;
-				});
-			});
-	
+
 			redrawAll();
 		};
-	
+
 		resizeCanvas();
 		const observer = new ResizeObserver(resizeCanvas);
 		observer.observe(canvas.parentElement!);
-	
+
 		// Keyboard shortcuts for Undo/Redo
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.ctrlKey && e.key.toLowerCase() === "z") {
@@ -75,7 +62,7 @@ export default function DrawingBoard() {
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
-	
+
 		// Handle incoming drawing messages
 		const handleMessage = (event: MessageEvent) => {
 			try {
@@ -90,16 +77,16 @@ export default function DrawingBoard() {
 				console.error("Failed to parse drawing message", err);
 			}
 		};
-	
+
 		socket?.addEventListener("message", handleMessage);
-	
+
 		return () => {
 			observer.disconnect();
 			window.removeEventListener("keydown", handleKeyDown);
 			socket?.removeEventListener("message", handleMessage);
 		};
 	}, [socket]);
-	
+
 	const getCoords = (e: React.MouseEvent | React.TouchEvent) => {
 		const canvas = canvasRef.current;
 		if (!canvas) return null;
@@ -114,29 +101,40 @@ export default function DrawingBoard() {
 		}
 
 		const rect = canvas.getBoundingClientRect();
-		return { x: clientX - rect.left, y: clientY - rect.top };
+		return {
+			x: (clientX - rect.left) / canvas.width,  // normalized
+			y: (clientY - rect.top) / canvas.height, // normalized
+		};
 	};
 
 	const drawPoint = (ctx: CanvasRenderingContext2D, strokeSize: number, p: Point, prev: Point | null) => {
+		const canvas = canvasRef.current!;
+		const px = p.x * canvas.width;  // convert back to pixels
+		const py = p.y * canvas.height;
+	
 		ctx.beginPath();
-		ctx.arc(p.x, p.y, strokeSize / 2, 0, Math.PI * 2);
+		ctx.arc(px, py, strokeSize / 2, 0, Math.PI * 2);
 		ctx.fill();
-
+	
 		if (!prev) return;
-
-		const dx = p.x - prev.x;
-		const dy = p.y - prev.y;
+	
+		const prevX = prev.x * canvas.width;
+		const prevY = prev.y * canvas.height;
+	
+		const dx = px - prevX;
+		const dy = py - prevY;
 		const distance = Math.hypot(dx, dy);
 		const step = 0.2 * strokeSize / distance;
+	
 		for (let t = 0; t < 1; t += step) {
-			const x = prev.x + dx * t;
-			const y = prev.y + dy * t;
+			const x = prevX + dx * t;
+			const y = prevY + dy * t;
 			ctx.beginPath();
 			ctx.arc(x, y, strokeSize / 2, 0, Math.PI * 2);
 			ctx.fill();
 		}
 	};
-
+	
 	const drawLastPoint = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
 		const len = stroke.points.length;
 		if (len === 0) return;
@@ -180,7 +178,7 @@ export default function DrawingBoard() {
 	const stopDrawing = () => {
 		if (!drawingRef.current) return;
 		drawingRef.current = false;
-	
+
 		const stroke = currentStrokeRef.current;
 		if (stroke.points.length <= 0) return;
 
@@ -193,7 +191,7 @@ export default function DrawingBoard() {
 		currentStrokeRef.current = { points: [], color: penColor, size: penSize };
 
 		sendWSMessage(JSON.stringify({ type: "drawing", stroke }));
-	};	
+	};
 
 	const redrawAll = () => {
 		const canvas = canvasRef.current;
