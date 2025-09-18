@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Message } from "./home-logic";
+import { Message } from "./public-chat";
 
 type Props = {
   messages: Message[];

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import MessageList from "./message-list";
 import MessageInput from "./message-input";
+import { useWebSocket } from "@/context/websocket-context";
 
 export type Message = {
   id: number;
@@ -11,45 +12,48 @@ export type Message = {
   username: string;
 };
 
-export default function HomeLogic() {
+export default function PublicChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [username, setUsername] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const socketRef = useRef<WebSocket | null>(null);
-  const idRef = useRef(0);
+
+  const { socket, sendMessage: sendWSMessage } = useWebSocket(); // consume context
+  const idRef = useRef(0); // simple ID counter
 
   useEffect(() => {
-    if (!isLoggedIn)
-      return;
+    if (!isLoggedIn || !socket) return;
 
-    const socket = new WebSocket("ws://localhost:8080");
-    socketRef.current = socket;
+    const handleMessage = (event: MessageEvent) => {
+      const data = JSON.parse(event.data); // { type, ...rest }
 
-    socket.onopen = () => console.log("✅ Connected to WebSocket server");
+      // Only process chat messages
+      if (data.type !== "chat") return;
 
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data); // { text, username, timestamp }
       setMessages((prev) => [
         ...prev,
-        { id: idRef.current++, ...data },
+        { id: idRef.current++, text: data.text, username: data.username, timestamp: data.timestamp },
       ]);
     };
 
-    socket.onclose = () => console.log("❌ Disconnected");
+    socket.addEventListener("message", handleMessage);
 
-    return () => socket.close();
-  }, [isLoggedIn]);
+    return () => socket.removeEventListener("message", handleMessage);
+  }, [isLoggedIn, socket]);
 
   const sendMessage = () => {
-    if (socketRef.current && input.trim()) {
-      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const messageData = { text: input, username, timestamp: time };
+    if (!input.trim()) return;
 
-      socketRef.current.send(JSON.stringify(messageData));
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const messageData = {
+      type: "chat", // tag it as a chat message
+      text: input,
+      username,
+      timestamp: time
+    };
 
-      setInput("");
-    }
+    sendWSMessage(JSON.stringify(messageData));
+    setInput("");
   };
 
   if (!isLoggedIn) {
@@ -59,7 +63,6 @@ export default function HomeLogic() {
         <input
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          // placeholder="Username"
           className="border rounded p-2 mb-2 w-full text-black placeholder-black"
           onKeyDown={(e) => e.key === "Enter" && username.trim() && setIsLoggedIn(true)}
         />

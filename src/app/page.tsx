@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import HomeLogic from "../components/home-logic";
+import PublicChat from "@/components/public-chat";
 import DrawingBoard from "@/components/drawing-board";
+import { WebSocketProvider } from "@/context/websocket-context";
 
 export default function Page() {
   const [open, setOpen] = useState(false);
 
   return (
+    <WebSocketProvider>
     <div className="min-h-screen bg-white relative flex">
       {/* Collapsible Chat Panel */}
       <div
@@ -15,7 +17,7 @@ export default function Page() {
         style={{ width: open ? "20rem" : "0rem" }}
       >
         <div className={`flex-1 transition-opacity duration-150 ease-in-out ${open ? "opacity-100 p-4" : "opacity-0 p-0"}`}>
-          <HomeLogic />
+          <PublicChat />
         </div>
       </div>
 
@@ -33,5 +35,6 @@ export default function Page() {
         <DrawingBoard />
       </div>
     </div>
+    </WebSocketProvider>
   );
 }

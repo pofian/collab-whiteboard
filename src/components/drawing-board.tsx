@@ -1,5 +1,6 @@
 "use client";
 
+import { useWebSocket } from "@/context/websocket-context";
 import { useRef, useState, useEffect } from "react";
 import { AiOutlineRedo, AiOutlineUndo } from "react-icons/ai";
 
@@ -26,67 +27,82 @@ export default function DrawingBoard() {
 	const undoStack = useRef<UndoAction[]>([]);
 	const redoStack = useRef<UndoAction[]>([]);
 
+	const { socket, sendMessage: sendWSMessage } = useWebSocket(); // consume context
+
 	useEffect(() => {
 		const canvas = canvasRef.current;
 		if (!canvas) return;
-
+	
 		const ctx = canvas.getContext("2d");
 		if (!ctx) return;
-
+	
 		ctx.lineCap = "round";
 		ctx.lineJoin = "round";
 		ctxRef.current = ctx;
-
+	
 		const resizeCanvas = () => {
 			if (!canvas) return;
-
+	
 			const oldWidth = canvas.width;
 			const oldHeight = canvas.height;
-
+	
 			canvas.width = canvas.offsetWidth;
 			canvas.height = canvas.offsetHeight;
-
+	
 			const scaleX = oldWidth ? canvas.width / oldWidth : 1;
 			const scaleY = oldHeight ? canvas.height / oldHeight : 1;
-
-			// Scale all strokes
+	
 			strokesRef.current.forEach((stroke) => {
 				stroke.points.forEach((p) => {
 					p.x *= scaleX;
 					p.y *= scaleY;
 				});
 			});
-
+	
 			redrawAll();
 		};
-
+	
 		resizeCanvas();
 		const observer = new ResizeObserver(resizeCanvas);
 		observer.observe(canvas.parentElement!);
-
+	
 		// Keyboard shortcuts for Undo/Redo
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.ctrlKey && e.key.toLowerCase() === "z") {
 				e.preventDefault();
-				if (e.shiftKey)
-					redo();
-				else
-					undo();
+				if (e.shiftKey) redo();
+				else undo();
 			}
 		};
-
 		window.addEventListener("keydown", handleKeyDown);
-
+	
+		// Handle incoming drawing messages
+		const handleMessage = (event: MessageEvent) => {
+			try {
+				const data = JSON.parse(event.data);
+				if (data.type === "drawing" && Array.isArray(data.stroke?.points)) {
+					// Reconstruct stroke and draw it
+					const stroke: Stroke = data.stroke;
+					strokesRef.current.push(stroke);
+					if (ctxRef.current) drawStroke(ctxRef.current, stroke);
+				}
+			} catch (err) {
+				console.error("Failed to parse drawing message", err);
+			}
+		};
+	
+		socket?.addEventListener("message", handleMessage);
+	
 		return () => {
 			observer.disconnect();
 			window.removeEventListener("keydown", handleKeyDown);
+			socket?.removeEventListener("message", handleMessage);
 		};
-	}, []);
-
+	}, [socket]);
+	
 	const getCoords = (e: React.MouseEvent | React.TouchEvent) => {
 		const canvas = canvasRef.current;
 		if (!canvas) return null;
-		const rect = canvas.getBoundingClientRect();
 
 		let clientX: number, clientY: number;
 		if ("touches" in e) {
@@ -97,6 +113,7 @@ export default function DrawingBoard() {
 			clientY = e.clientY;
 		}
 
+		const rect = canvas.getBoundingClientRect();
 		return { x: clientX - rect.left, y: clientY - rect.top };
 	};
 
@@ -165,15 +182,17 @@ export default function DrawingBoard() {
 		drawingRef.current = false;
 	
 		const stroke = currentStrokeRef.current;
-		if (stroke.points.length > 0) {
-			strokesRef.current.push(stroke);
-	
-			// Push to undo stack
-			undoStack.current.push({ type: "stroke", strokes: [stroke] });
-			redoStack.current = []; // clear redo stack
-	
-			currentStrokeRef.current = { points: [], color: penColor, size: penSize };
-		}
+		if (stroke.points.length <= 0) return;
+
+		strokesRef.current.push(stroke);
+
+		// Push to undo stack
+		undoStack.current.push({ type: "stroke", strokes: [stroke] });
+		redoStack.current = []; // clear redo stack
+
+		currentStrokeRef.current = { points: [], color: penColor, size: penSize };
+
+		sendWSMessage(JSON.stringify({ type: "drawing", stroke }));
 	};	
 
 	const redrawAll = () => {

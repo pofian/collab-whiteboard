@@ -6,7 +6,7 @@ wss.on("connection", (ws) => {
   console.log("✅ Client connected");
 
   ws.on("message", (msg) => {
-    console.log("Received:", msg.toString());
+    console.log("Received:", JSON.parse(msg.toString()).type == "drawing" ? "{\"type\":\"drawing\", ...}" : msg.toString());
 
     // broadcast to everyone
     wss.clients.forEach((client) => {
