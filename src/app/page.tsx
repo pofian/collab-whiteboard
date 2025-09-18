@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import PublicChat from "@/components/public-chat";
-import DrawingBoard from "@/components/drawing-board";
+import PublicChat from "@/components/chat/public-chat";
+import DrawingBoard from "@/components/board/drawing-board";
 import { WebSocketProvider } from "@/context/websocket-context";
 
 export default function Page() {

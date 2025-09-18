@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Message } from "./public-chat";
+import { Message } from "@/components/chat/public-chat";
 
 type Props = {
   messages: Message[];

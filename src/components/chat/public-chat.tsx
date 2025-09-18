@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import MessageList from "./message-list";
-import MessageInput from "./message-input";
+import MessageList from "@/components/chat/message-list";
+import MessageInput from "@/components/chat/message-input";
 import { useWebSocket } from "@/context/websocket-context";
 
 export type Message = {
