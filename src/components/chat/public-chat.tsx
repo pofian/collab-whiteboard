@@ -25,7 +25,7 @@ export default function PublicChat() {
     if (!isLoggedIn || !socket) return;
 
     const handleMessage = (event: MessageEvent) => {
-      const data = JSON.parse(event.data); // { type, ...rest }
+      const data = JSON.parse(event.data);
 
       // Only process chat messages
       if (data.type !== "chat") return;

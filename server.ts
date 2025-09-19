@@ -7,7 +7,7 @@ let allHistory: any[] = [];    // all strokes ever drawn
 let connectedClients = 0;
 
 // Helper: safe broadcast
-function broadcast(sender: WebSocket, message: string) {
+function broadcast(message: string, sender: WebSocket | undefined = undefined) {
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN && client !== sender) {
       client.send(message);
@@ -34,18 +34,22 @@ wss.on("connection", (ws) => {
     }
 
     switch (data.type) {
+      case "chat":
+        broadcast(JSON.stringify(data));
+        break;
+
       case "drawing":
         if (data.stroke) {
           strokes.push(data.stroke);
           allHistory.push(data.stroke);
-          broadcast(ws, JSON.stringify({ type: "drawing", stroke: data.stroke }));
+          broadcast(JSON.stringify({ type: "drawing", stroke: data.stroke }), ws);
         }
         break;
 
       case "undo":
         if (data.strokeId) {
           strokes = strokes.filter((s) => s.strokeId !== data.strokeId);
-          broadcast(ws, JSON.stringify({ type: "undo", strokeId: data.strokeId }));
+          broadcast(JSON.stringify({ type: "undo", strokeId: data.strokeId }), ws);
         }
         break;
 
@@ -54,15 +58,8 @@ wss.on("connection", (ws) => {
           const stroke = allHistory.find((s) => s.strokeId === data.strokeId);
           if (stroke) {
             strokes.push(stroke);
-            broadcast(ws, JSON.stringify({ type: "redo", stroke }));
+            broadcast(JSON.stringify({ type: "redo", stroke }), ws);
           }
-        }
-        break;
-
-      case "clear":
-        if (data.userId) {
-          strokes = strokes.filter((s) => s.userId !== data.userId);
-          broadcast(ws, JSON.stringify({ type: "clear", userId: data.userId }));
         }
         break;
 

@@ -2,10 +2,11 @@
 
 import { useRef, useState, useEffect } from "react";
 import { useWebSocket } from "@/context/websocket-context";
+import { drawStroke, drawLastPoint, redrawAll } from "@/components/board/canvas-utils";
 
 export type Point = {
-    x: number;
-    y: number
+  x: number;
+  y: number
 };
 
 export type Stroke = {
@@ -21,6 +22,9 @@ export function useDrawingBoard() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
 
+  const [background, setBackground] = useState<"white" | "black" | "checkers">("white");
+  const backgroundRef = useRef(background);
+
   const [penColor, setPenColor] = useState("#000000");
   const [penSize, setPenSize] = useState(5);
 
@@ -35,7 +39,7 @@ export function useDrawingBoard() {
 
   const { socket, sendMessage: sendWSMessage } = useWebSocket();
 
-  // Canvas setup & socket messages
+  // ---- Canvas setup & resize ----
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -50,7 +54,7 @@ export function useDrawingBoard() {
       const { width, height } = canvas.getBoundingClientRect();
       canvas.width = width;
       canvas.height = height;
-      redrawAll();
+      redrawAll(ctx, strokesRef.current, backgroundRef.current);
     };
 
     resizeCanvas();
@@ -58,13 +62,64 @@ export function useDrawingBoard() {
     observer.observe(canvas.parentElement!);
     window.addEventListener("resize", resizeCanvas);
 
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", resizeCanvas);
+    };
+  }, []);
+
+
+  // ---- Trigger redraw on background change ----
+  useEffect(() => {
+    backgroundRef.current = background
+    redrawAll(ctxRef.current!, strokesRef.current, background);
+  }, [background]);
+
+
+  // ---- Undo / Redo ----
+  const undo = () => {
+    if (myUndoStack.current.length === 0) return;
+    const stroke = myUndoStack.current.pop()!;
+    strokesRef.current = strokesRef.current.filter(s => s.strokeId !== stroke.strokeId);
+    myRedoStack.current.push(stroke);
+    redrawAll(ctxRef.current!, strokesRef.current, backgroundRef.current);
+    sendWSMessage(JSON.stringify({ type: "undo", strokeId: stroke.strokeId }));
+  };
+
+  const redo = () => {
+    if (myRedoStack.current.length === 0) return;
+    const stroke = myRedoStack.current.pop()!;
+    strokesRef.current.push(stroke);
+    myUndoStack.current.push(stroke);
+    redrawAll(ctxRef.current!, strokesRef.current, backgroundRef.current);
+    sendWSMessage(JSON.stringify({ type: "redo", strokeId: stroke.strokeId }));
+  };
+
+
+  // ---- Keyboard shortcuts: undo/redo/save ----
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Undo / Redo
       if (e.ctrlKey && e.key.toLowerCase() === "z") {
-        e.preventDefault();
+        e.preventDefault(); // Prevent browser undo of inputs
         e.shiftKey ? redo() : undo();
       }
+
+      // Save
+      if (e.ctrlKey && e.key.toLowerCase() === "s") {
+        e.preventDefault(); // Prevent browser save dialog
+        saveAsJPEG();
+      }
     };
+
     window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo]);
+
+
+  // ---- WebSocket messages ----
+  useEffect(() => {
+    if (!socket) return;
 
     const handleMessage = (event: MessageEvent) => {
       const data = JSON.parse(event.data);
@@ -72,40 +127,32 @@ export function useDrawingBoard() {
       switch (data.type) {
         case "init":
           strokesRef.current = data.strokes;
-          redrawAll();
+          redrawAll(ctxRef.current!, strokesRef.current, backgroundRef.current);
           break;
         case "drawing":
           strokesRef.current.push(data.stroke);
           drawStroke(ctxRef.current!, data.stroke);
+          currentStrokeRef.current = data.stroke;
           break;
         case "undo":
           strokesRef.current = strokesRef.current.filter(s => s.strokeId !== data.strokeId);
-          redrawAll();
+          redrawAll(ctxRef.current!, strokesRef.current, backgroundRef.current);
           break;
         case "redo":
           if (data.stroke) {
             strokesRef.current.push(data.stroke);
-            redrawAll();
+            redrawAll(ctxRef.current!, strokesRef.current, backgroundRef.current);
           }
-          break;
-        case "clear":
-          strokesRef.current = strokesRef.current.filter(s => s.userId !== data.userId);
-          redrawAll();
           break;
       }
     };
 
-    socket?.addEventListener("message", handleMessage);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", resizeCanvas);
-      window.removeEventListener("keydown", handleKeyDown);
-      socket?.removeEventListener("message", handleMessage);
-    };
+    socket.addEventListener("message", handleMessage);
+    return () => socket.removeEventListener("message", handleMessage);
   }, [socket]);
 
-  // ===== Utility & Drawing functions =====
+
+  // ---- Utility function to get coordinates ----
   const getCoords = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -123,58 +170,8 @@ export function useDrawingBoard() {
     return { x: (clientX - rect.left) / canvas.width, y: (clientY - rect.top) / canvas.height };
   };
 
-  const drawPoint = (ctx: CanvasRenderingContext2D, strokeSize: number, p: Point, prev: Point | null) => {
-    const canvas = canvasRef.current!;
-    const px = p.x * canvas.width;
-    const py = p.y * canvas.height;
 
-    ctx.beginPath();
-    ctx.arc(px, py, strokeSize / 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (!prev) return;
-    const prevX = prev.x * canvas.width;
-    const prevY = prev.y * canvas.height;
-    const dx = px - prevX;
-    const dy = py - prevY;
-    const distance = Math.hypot(dx, dy);
-    const step = 0.2 * strokeSize / distance;
-
-    for (let t = 0; t < 1; t += step) {
-      const x = prevX + dx * t;
-      const y = prevY + dy * t;
-      ctx.beginPath();
-      ctx.arc(x, y, strokeSize / 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  };
-
-  const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
-    ctx.fillStyle = stroke.color;
-    if (stroke.points.length === 0) return;
-    drawPoint(ctx, stroke.size, stroke.points[0], null);
-    for (let i = 1; i < stroke.points.length; i++) {
-      drawPoint(ctx, stroke.size, stroke.points[i], stroke.points[i - 1]);
-    }
-  };
-
-  const drawLastPoint = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
-    const len = stroke.points.length;
-    if (len === 0) return;
-    const p = stroke.points[len - 1];
-    const prev = len > 1 ? stroke.points[len - 2] : null;
-    drawPoint(ctx, stroke.size, p, prev);
-  };
-
-  const redrawAll = () => {
-    const canvas = canvasRef.current;
-    const ctx = ctxRef.current;
-    if (!canvas || !ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    strokesRef.current.forEach(stroke => drawStroke(ctx, stroke));
-  };
-
-  // ===== Event handlers =====
+  // ---- Event handlers ----
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     const coords = getCoords(e);
     if (!ctxRef.current || !coords) return;
@@ -211,34 +208,20 @@ export function useDrawingBoard() {
     sendWSMessage(JSON.stringify({ type: "drawing", stroke }));
   };
 
-  const undo = () => {
-    if (myUndoStack.current.length === 0) return;
-    const stroke = myUndoStack.current.pop()!;
-    strokesRef.current = strokesRef.current.filter(s => s.strokeId !== stroke.strokeId);
-    myRedoStack.current.push(stroke);
-    redrawAll();
-    sendWSMessage(JSON.stringify({ type: "undo", strokeId: stroke.strokeId }));
-  };
-
-  const redo = () => {
-    if (myRedoStack.current.length === 0) return;
-    const stroke = myRedoStack.current.pop()!;
-    strokesRef.current.push(stroke);
-    myUndoStack.current.push(stroke);
-    redrawAll();
-    sendWSMessage(JSON.stringify({ type: "redo", strokeId: stroke.strokeId }));
-  };
-
-  const clearAll = () => {
-    strokesRef.current = [];
-    myUndoStack.current = [];
-    myRedoStack.current = [];
-    redrawAll();
-    sendWSMessage(JSON.stringify({ type: "clear", userId }));
+  // ---- Save the current image ----
+  const saveAsJPEG = () => {
+    if (!ctxRef.current) return;
+    const canvas = ctxRef.current.canvas;
+    const link = document.createElement("a");
+    link.download = "drawing.jpg";
+    link.href = canvas.toDataURL("image/jpeg", 0.8);
+    link.click();
   };
 
   return {
     canvasRef,
+    background,
+    setBackground,
     penColor,
     setPenColor,
     penSize,
@@ -248,6 +231,6 @@ export function useDrawingBoard() {
     stopDrawing,
     undo,
     redo,
-    clearAll,
+    saveAsJPEG
   };
 }
