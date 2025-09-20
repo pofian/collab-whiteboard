@@ -22,22 +22,26 @@ export function useDrawingBoard() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
 
-  const [background, setBackground] = useState<"white" | "black" | "checkers">("white");
+  const [background, setBackground] = useState("grid");
   const backgroundRef = useRef(background);
 
   const [penColor, setPenColor] = useState("#000000");
   const [penSize, setPenSize] = useState(5);
 
-  const [userId] = useState(() => crypto.randomUUID());
+  const rand = () => Math.random().toString(36).substring(2, 16);
+
+  const [userId] = useState(rand);
 
   const drawingRef = useRef(false);
   const strokesRef = useRef<Stroke[]>([]);
-  const currentStrokeRef = useRef<Stroke>({ points: [], color: penColor, size: penSize, userId, strokeId: crypto.randomUUID(), id: userId });
+  const currentStrokeRef = useRef<Stroke>({ points: [], color: penColor, size: penSize, userId, strokeId: rand(), id: userId });
 
   const myUndoStack = useRef<Stroke[]>([]);
   const myRedoStack = useRef<Stroke[]>([]);
 
   const { socket, sendMessage: sendWSMessage } = useWebSocket();
+
+  const [onlineUsersCount, setOnlineUsersCount] = useState(1);
 
   // ---- Canvas setup & resize ----
   useEffect(() => {
@@ -123,8 +127,13 @@ export function useDrawingBoard() {
 
     const handleMessage = (event: MessageEvent) => {
       const data = JSON.parse(event.data);
+      console.log("📩 WS Message:", data);
 
       switch (data.type) {
+        case "usersCount":
+          setOnlineUsersCount(data.count);
+          console.log(`👥 Users online: ${data.count}`);
+          break;
         case "init":
           strokesRef.current = data.strokes;
           redrawAll(ctxRef.current!, strokesRef.current, backgroundRef.current);
@@ -178,7 +187,7 @@ export function useDrawingBoard() {
 
     drawingRef.current = true;
     ctxRef.current.fillStyle = penColor;
-    currentStrokeRef.current = { points: [], color: penColor, size: penSize, userId, strokeId: crypto.randomUUID(), id: userId };
+    currentStrokeRef.current = { points: [], color: penColor, size: penSize, userId, strokeId: rand(), id: userId };
     draw(e);
   };
 
@@ -203,20 +212,30 @@ export function useDrawingBoard() {
     myUndoStack.current.push(stroke);
     myRedoStack.current = [];
 
-    currentStrokeRef.current = { points: [], color: penColor, size: penSize, userId, strokeId: crypto.randomUUID(), id: userId };
+    currentStrokeRef.current = { points: [], color: penColor, size: penSize, userId, strokeId: rand(), id: userId };
 
     sendWSMessage(JSON.stringify({ type: "drawing", stroke }));
   };
 
+
   // ---- Save the current image ----
   const saveAsJPEG = () => {
-    if (!ctxRef.current) return;
-    const canvas = ctxRef.current.canvas;
+    if (!strokesRef.current.length) return;
+  
+    const width = 1920; // desired image width
+    const height = 1080; // desired image height
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    const tempCtx = tempCanvas.getContext("2d")!;
+  
+    redrawAll(tempCtx, strokesRef.current, backgroundRef.current);
+  
     const link = document.createElement("a");
     link.download = "drawing.jpg";
-    link.href = canvas.toDataURL("image/jpeg", 0.8);
+    link.href = tempCanvas.toDataURL("image/jpeg", 1.0);
     link.click();
-  };
+  };  
 
   return {
     canvasRef,
@@ -231,6 +250,7 @@ export function useDrawingBoard() {
     stopDrawing,
     undo,
     redo,
-    saveAsJPEG
+    saveAsJPEG,
+    onlineUsersCount
   };
 }

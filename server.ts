@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws";
+import os from "os";
 
-const wss = new WebSocketServer({ port: 8080 });
+const wss = new WebSocketServer({ host: "0.0.0.0", port: 8080 }); // listen on all interfaces
 
 let strokes: any[] = [];       // currently active strokes
 let allHistory: any[] = [];    // all strokes ever drawn
@@ -15,9 +16,15 @@ function broadcast(message: string, sender: WebSocket | undefined = undefined) {
   });
 }
 
+function broadcastUserCount() {
+  const message = JSON.stringify({ type: "usersCount", count: connectedClients });
+  broadcast(message);
+}
+
 wss.on("connection", (ws) => {
   connectedClients++;
   console.log(`✅ Client connected (total: ${connectedClients})`);
+  broadcastUserCount();
 
   // Send existing strokes to the new client
   if (strokes.length > 0) {
@@ -72,6 +79,7 @@ wss.on("connection", (ws) => {
   ws.on("close", () => {
     connectedClients--;
     console.log(`❌ Client disconnected (total: ${connectedClients})`);
+    broadcastUserCount();
 
     // If no clients remain, wipe the server state
     if (connectedClients === 0) {
@@ -82,4 +90,16 @@ wss.on("connection", (ws) => {
   });
 });
 
-console.log("🚀 WebSocket server running on ws://localhost:8080");
+const ip = (() => {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]!) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return "localhost";
+})();
+
+console.log(`🚀 WebSocket server running on ws://${ip}:8080`);

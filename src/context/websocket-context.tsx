@@ -5,17 +5,22 @@ type WSContextType = {
   sendMessage: (msg: string) => void;
 };
 
-const WSContext = createContext<WSContextType | undefined>(undefined);
-
 type WebSocketProviderProps = {
   children: ReactNode;
 };
+
+const WSContext = createContext<WSContextType | undefined>(undefined);
+
+const serverStatus: boolean = true;
+const localServerUrl = "ws://localhost:8080";
+const remoteServerUrl = "ws:// :8080";
+const serverUrl = serverStatus ? localServerUrl : remoteServerUrl;
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:8080");
+    const ws = new WebSocket(serverUrl);
     setSocket(ws);
 
     return () => ws.close();

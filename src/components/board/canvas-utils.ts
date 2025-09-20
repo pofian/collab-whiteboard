@@ -122,7 +122,7 @@ const drawBackground = (ctx: CanvasRenderingContext2D, background: string) => {
     ctx.fillRect(-tileWidth, -tileHeight, canvasWidth + 2 * tileWidth, canvasHeight + 2 * tileHeight);
   };
 
-  if (background === "checkers") {
+  if (background === "checkerboard") {
     const pattern = createPatternCanvas((tctx, w, h) => {
       tctx.fillStyle = "#ccc";
       tctx.fillRect(0, 0, w, h);
