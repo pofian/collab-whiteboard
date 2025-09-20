@@ -147,7 +147,7 @@ export default function DrawingBoard() {
 
           {/* Info / GitHub Button */}
           <button
-            onClick={() => window.open("https://github.com", "_blank")}
+            onClick={() => window.open("https://github.com/pofian/collab-whiteboard", "_blank")}
             className={`relative group flex items-center justify-center ${buttonHeight} px-3 bg-gray-300 rounded shadow text-black`}
           >
             <FiInfo size={20} />
