@@ -42,6 +42,7 @@ export function useDrawingBoard() {
   const { socket, sendMessage: sendWSMessage } = useWebSocket();
 
   const [onlineUsersCount, setOnlineUsersCount] = useState(1);
+  const [isConnected, setIsConnected] = useState(false);
 
   // ---- Canvas setup & resize ----
   useEffect(() => {
@@ -120,6 +121,25 @@ export function useDrawingBoard() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [undo, redo]);
 
+  // ---- Track socket connection ----
+  useEffect(() => {
+    if (!socket) {
+      setIsConnected(false);
+      return;
+    }
+    setIsConnected(true);
+
+    const handleClose = () => setIsConnected(false);
+    const handleOpen = () => setIsConnected(true);
+
+    socket.addEventListener("close", handleClose);
+    socket.addEventListener("open", handleOpen);
+
+    return () => {
+      socket.removeEventListener("close", handleClose);
+      socket.removeEventListener("open", handleOpen);
+    };
+  }, [socket]);
 
   // ---- WebSocket messages ----
   useEffect(() => {
@@ -251,6 +271,7 @@ export function useDrawingBoard() {
     undo,
     redo,
     saveAsJPEG,
+    isConnected,
     onlineUsersCount
   };
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useDrawingBoard } from "@/components/board/drawing-board-logic";
-import { AiOutlineRedo, AiOutlineUndo, AiOutlineDownload } from "react-icons/ai";
+import { AiOutlineRedo, AiOutlineUndo, AiOutlineDownload, AiOutlineInfoCircle } from "react-icons/ai";
 import { BsCircleFill } from "react-icons/bs";
 import { FiInfo } from "react-icons/fi";
 
@@ -21,6 +21,7 @@ export default function DrawingBoard() {
     undo,
     redo,
     saveAsJPEG,
+    isConnected,
     onlineUsersCount,
   } = useDrawingBoard();
 
@@ -38,8 +39,21 @@ export default function DrawingBoard() {
         {/* Online Users */}
         <h1 className="text-3xl font-bold text-black flex items-center min-w-0">
           <span className="hidden md:flex items-center gap-2 truncate">
-            <BsCircleFill className="text-green-500 text-lg flex-shrink-0" />
-            <span className="truncate">Online: {onlineUsersCount}</span>
+            <BsCircleFill
+              className={`text-lg flex-shrink-0 ${isConnected ? "text-green-500" : "text-gray-400"}`}
+            />
+            <span className="truncate flex items-center gap-1">
+              {isConnected ? `Online: ${onlineUsersCount}` : "Offline"}
+
+              {!isConnected && (
+                <span className="relative group">
+                  <AiOutlineInfoCircle className="text-gray-400 w-4 h-4" />
+                  <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap">
+                    The server might need a few seconds to start. Please wait.
+                  </span>
+                </span>
+              )}
+            </span>
           </span>
         </h1>
 

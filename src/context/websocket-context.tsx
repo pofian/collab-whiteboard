@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { serverUrl } from "@/context/deploy-config";
 
 type WSContextType = {
   socket: WebSocket | null;
@@ -10,11 +11,6 @@ type WebSocketProviderProps = {
 };
 
 const WSContext = createContext<WSContextType | undefined>(undefined);
-
-const serverStatus: boolean = false;
-const localServerUrl = "ws://localhost:8080";
-const remoteServerUrl = "https://collab-whiteboard-owtq.onrender.com/";
-const serverUrl = serverStatus ? localServerUrl : remoteServerUrl;
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
