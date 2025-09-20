@@ -40,7 +40,6 @@ export default function DrawingBoard() {
             <BsCircleFill className="text-green-500 text-lg flex-shrink-0" />
             <span className="truncate">Online: {onlineUsersCount}</span>
           </span>
-
         </h1>
 
         {/* Toolbar */}

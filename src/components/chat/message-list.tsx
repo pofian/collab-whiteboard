@@ -16,9 +16,9 @@ export default function MessageList({ messages }: Props) {
 
   return (
     <div
-      ref={containerRef}
-      className="border rounded p-2 overflow-y-auto mb-2 bg-white text-black resize-y min-h-[200px] max-h-[600px]"
-    >
+  ref={containerRef}
+  className="border rounded p-2 bg-white text-black resize-none w-full flex-1 overflow-y-auto"
+>
       {messages.map((msg) => (
         <div key={msg.id} className="p-1 flex justify-between text-sm">
           <span className="whitespace-pre-wrap">

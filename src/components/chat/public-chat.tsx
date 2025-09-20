@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import MessageList from "@/components/chat/message-list";
-import MessageInput from "@/components/chat/message-input";
 import { useWebSocket } from "@/context/websocket-context";
+import MessageInput from "@/components/chat/message-input";
 
 export type Message = {
   id: number;
@@ -16,13 +16,13 @@ export default function PublicChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [username, setUsername] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [finalUsername, setFinalUsername] = useState(""); // confirmed username
 
   const { socket, sendMessage: sendWSMessage } = useWebSocket(); // consume context
   const idRef = useRef(0); // simple ID counter
 
   useEffect(() => {
-    if (!isLoggedIn || !socket) return;
+    if (!socket) return;
 
     const handleMessage = (event: MessageEvent) => {
       const data = JSON.parse(event.data);
@@ -37,18 +37,17 @@ export default function PublicChat() {
     };
 
     socket.addEventListener("message", handleMessage);
-
     return () => socket.removeEventListener("message", handleMessage);
-  }, [isLoggedIn, socket]);
+  }, [socket]);
 
   const sendMessage = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !finalUsername.trim()) return;
 
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const messageData = {
       type: "chat", // tag it as a chat message
       text: input,
-      username,
+      username: finalUsername,
       timestamp: time
     };
 
@@ -56,31 +55,20 @@ export default function PublicChat() {
     setInput("");
   };
 
-  if (!isLoggedIn) {
-    return (
-      <div className="p-4 max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold mb-4 text-black placeholder-black">Enter your username</h1>
-        <input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="border rounded p-2 mb-2 w-full text-black placeholder-black"
-          onKeyDown={(e) => e.key === "Enter" && username.trim() && setIsLoggedIn(true)}
-        />
-        <button
-          onClick={() => username.trim() && setIsLoggedIn(true)}
-          className="bg-blue-500 text-white px-4 py-2 rounded w-full"
-        >
-          Join Chat
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="p-4 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold mb-4 text-black">🌐 Public Chat</h1>
+    <div className="flex flex-col h-[90vh] max-w-lg mx-auto gap-2">
+      <h1 className="text-2xl font-bold mb-2 text-black">🌐 Public Chat</h1>
       <MessageList messages={messages} />
-      <MessageInput input={input} setInput={setInput} sendMessage={sendMessage} />
+
+      <MessageInput
+        input={input}
+        setInput={setInput}
+        sendMessage={sendMessage}
+        username={username}
+        setUsername={setUsername}
+        finalUsername={finalUsername}
+        setFinalUsername={setFinalUsername}
+      />
     </div>
   );
 }
