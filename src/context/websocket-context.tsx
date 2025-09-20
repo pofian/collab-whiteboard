@@ -11,9 +11,9 @@ type WebSocketProviderProps = {
 
 const WSContext = createContext<WSContextType | undefined>(undefined);
 
-const serverStatus: boolean = true;
+const serverStatus: boolean = false;
 const localServerUrl = "ws://localhost:8080";
-const remoteServerUrl = "https://collab-whiteboard-owtq.onrender.com";
+const remoteServerUrl = "https://collab-whiteboard-owtq.onrender.com/";
 const serverUrl = serverStatus ? localServerUrl : remoteServerUrl;
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {

@@ -124,7 +124,7 @@ export default function DrawingBoard() {
                 {["white", "black", "grid", "checkerboard"].map((bg) => (
                   <div
                     key={bg}
-                    onClick={() => { setBackground(bg as any); setShowBackgroundDropdown(false); }}
+                    onClick={() => { setBackground(bg); setShowBackgroundDropdown(false); }}
                     className={`text-black px-4 py-1 cursor-pointer hover:bg-gray-100 ${background === bg ? "bg-gray-200" : ""}`}
                   >
                     {bg.charAt(0).toUpperCase() + bg.slice(1)}
