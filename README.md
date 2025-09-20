@@ -2,6 +2,8 @@
 
 A **real-time collaborative drawing board** with features such as customizable pen color and size, optional background, undo/redo and public chat.
 
+This project can be accesed at https://collab-whiteboard-eight.vercel.app/
+
 ## Features
 
 * 🖌 **Drawing Tools**
@@ -38,13 +40,20 @@ A **real-time collaborative drawing board** with features such as customizable p
    cd collab-whiteboard
    npm install
    ```
-3. Run the development server:
+3. Modify config to run locally:
+
+   ```bash
+   code src/context/deploy-config.ts
+   ```
+  * Set `serverOnline = false`
+
+4. Run the development server:
 
    ```bash
    npx ts-node ./server.ts
    npm run dev
    ```
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Usage
 
