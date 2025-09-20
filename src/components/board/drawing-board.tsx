@@ -1,9 +1,10 @@
 "use client";
 
-import { AiOutlineRedo, AiOutlineUndo, AiOutlineDownload } from "react-icons/ai";
-import { useDrawingBoard } from "@/components/board/drawing-board-logic";
 import { useState } from "react";
+import { useDrawingBoard } from "@/components/board/drawing-board-logic";
+import { AiOutlineRedo, AiOutlineUndo, AiOutlineDownload } from "react-icons/ai";
 import { BsCircleFill } from "react-icons/bs";
+import { FiInfo } from "react-icons/fi";
 
 export default function DrawingBoard() {
   const {
@@ -141,6 +142,17 @@ export default function DrawingBoard() {
             <AiOutlineDownload size={18} />
             <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black text-white text-xs rounded px-2 py-1 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-[300ms] whitespace-nowrap">
               Save as JPEG
+            </span>
+          </button>
+
+          {/* Info / GitHub Button */}
+          <button
+            onClick={() => window.open("https://github.com", "_blank")}
+            className={`relative group flex items-center justify-center ${buttonHeight} px-3 bg-gray-300 rounded shadow text-black`}
+          >
+            <FiInfo size={20} />
+            <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black text-white text-xs rounded px-2 py-1 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-[300ms] whitespace-nowrap">
+              Source Code
             </span>
           </button>
         </div>
