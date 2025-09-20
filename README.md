@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Collaborative Drawing Board
 
-## Getting Started
+A **real-time collaborative drawing board** with features such as customizable pen color and size, optional background, undo/redo and public chat.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+* 🖌 **Drawing Tools**
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+  * Adjustable pen size
+  * Select pen color
+  * Undo/Redo functionality
+* 🖼 **Background Options**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+  * White, black, grid, or checkerboard
+* 🌐 **Real-time Collaboration**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+  * See online users
+  * Public chat with username selection
+* 💾 **Save Your Work**
 
-## Learn More
+  * Download the canvas as JPEG
 
-To learn more about Next.js, take a look at the following resources:
+## Tech Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+* **Frontend:** Next.js (React), Tailwind CSS
+* **Real-time Communication:** WebSockets
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Installation
 
-## Deploy on Vercel
+1. Clone the repository:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```bash
+   git clone https://github.com/pofian/collab-whiteboard.git
+   ```
+2. Install dependencies:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   ```bash
+   cd collab-whiteboard
+   npm install
+   ```
+3. Run the development server:
+
+   ```bash
+   npx ts-node ./server.ts
+   npm run dev
+   ```
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Usage
+
+1. Choose a username to join the chat.
+2. Use the drawing tools to draw on the canvas.
+3. Adjust pen color and size as needed.
+4. Switch backgrounds from the toolbar.
+5. Chat with other users in real-time.
+6. Save your drawing as a JPEG using the save button.
+
+## Contributing
+
+Contributions are welcome! Please submit a pull request or open an issue for feature requests or bugs.
