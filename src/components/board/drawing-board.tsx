@@ -43,35 +43,34 @@ export default function DrawingBoard() {
       <div className="flex items-center justify-between mb-2 min-w-0">
 
         {/* Online Users */}
-<h1 className="text-3xl font-bold text-black flex items-center min-w-0 decoration-none">
-  <span className="hidden md:flex items-center gap-2 min-w-0 overflow-visible decoration-none">
-    {/* Circle outside truncation */}
-    <span className="flex-shrink-0 w-5 flex justify-center items-center overflow-visible">
-  <BsCircleFill
-    className={`text-lg ${isConnected ? "text-green-500" : "text-red-500"}`}
-  />
-</span>
+        <h1 className="text-3xl font-bold text-black flex items-center min-w-0 decoration-none">
+          <span className="hidden md:flex items-center gap-2 min-w-0 overflow-visible decoration-none">
+            {/* Circle outside truncation */}
+            <span className="flex-shrink-0 w-5 flex justify-center items-center overflow-visible">
+              <BsCircleFill
+                className={`text-lg ${isConnected ? "text-green-500" : "text-red-500"}`}
+              />
+            </span>
 
+            {/* Text and tooltip */}
+            <span className="flex items-center gap-1 min-w-0 decoration-none">
+              <span className="truncate">
+                {isConnected ? `Online: ${onlineUsersCount}` : "Offline"}
+              </span>
 
-    {/* Text and tooltip */}
-    <span className="flex items-center gap-1 min-w-0 decoration-none">
-      <span className="truncate">
-        {isConnected ? `Online: ${onlineUsersCount}` : "Offline"}
-      </span>
-
-      {!isConnected && (
-        <div className="relative ml-1 group">
-          <div className="flex items-center justify-center w-5 h-5 text-gray-400 cursor-default">
-            <AiOutlineInfoCircle className="w-4 h-4" />
-          </div>
-          <div className={tooltipClasses}>
-            The server might need a few seconds to start. Please wait.
-          </div>
-        </div>
-      )}
-    </span>
-  </span>
-</h1>
+              {!isConnected && (
+                <div className="relative ml-1 group">
+                  <div className="flex items-center justify-center w-5 h-5 text-gray-400 cursor-default">
+                    <AiOutlineInfoCircle className="w-4 h-4" />
+                  </div>
+                  <div className={tooltipClasses}>
+                    The server might need a few seconds to start. Please wait.
+                  </div>
+                </div>
+              )}
+            </span>
+          </span>
+        </h1>
 
 
         {/* Toolbar */}
