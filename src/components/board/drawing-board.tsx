@@ -31,31 +31,48 @@ export default function DrawingBoard() {
 
   const buttonHeight = "h-10"; // 40px vertical size
 
+  const tooltipClasses =
+    "absolute top-full left-1/2 -translate-x-1/2 mt-2 " +
+    "bg-black text-white text-xs rounded px-2 py-1 " +
+    "opacity-0 group-hover:opacity-100 transition-opacity duration-200 " +
+    "whitespace-nowrap z-50 font-semibold";
+
   return (
     <div className="flex flex-col h-full pl-10 pr-6 pt-4 pb-4 box-border min-h-0">
       {/* Header + Buttons */}
       <div className="flex items-center justify-between mb-2 min-w-0">
 
         {/* Online Users */}
-        <h1 className="text-3xl font-bold text-black flex items-center min-w-0">
-          <span className="hidden md:flex items-center gap-2 truncate">
-            <BsCircleFill
-              className={`text-lg flex-shrink-0 ${isConnected ? "text-green-500" : "text-gray-400"}`}
-            />
-            <span className="truncate flex items-center gap-1">
-              {isConnected ? `Online: ${onlineUsersCount}` : "Offline"}
+<h1 className="text-3xl font-bold text-black flex items-center min-w-0 decoration-none">
+  <span className="hidden md:flex items-center gap-2 min-w-0 overflow-visible decoration-none">
+    {/* Circle outside truncation */}
+    <span className="flex-shrink-0 w-5 flex justify-center items-center overflow-visible">
+  <BsCircleFill
+    className={`text-lg ${isConnected ? "text-green-500" : "text-red-500"}`}
+  />
+</span>
 
-              {!isConnected && (
-                <span className="relative group">
-                  <AiOutlineInfoCircle className="text-gray-400 w-4 h-4" />
-                  <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black text-white text-xs rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap">
-                    The server might need a few seconds to start. Please wait.
-                  </span>
-                </span>
-              )}
-            </span>
-          </span>
-        </h1>
+
+    {/* Text and tooltip */}
+    <span className="flex items-center gap-1 min-w-0 decoration-none">
+      <span className="truncate">
+        {isConnected ? `Online: ${onlineUsersCount}` : "Offline"}
+      </span>
+
+      {!isConnected && (
+        <div className="relative ml-1 group">
+          <div className="flex items-center justify-center w-5 h-5 text-gray-400 cursor-default">
+            <AiOutlineInfoCircle className="w-4 h-4" />
+          </div>
+          <div className={tooltipClasses}>
+            The server might need a few seconds to start. Please wait.
+          </div>
+        </div>
+      )}
+    </span>
+  </span>
+</h1>
+
 
         {/* Toolbar */}
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -66,9 +83,7 @@ export default function DrawingBoard() {
               className={`relative group flex items-center justify-center ${buttonHeight} bg-gray-300 text-black px-4 rounded shadow`}
             >
               <AiOutlineUndo size={20} />
-              <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black text-white text-xs rounded px-2 py-1 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-[300ms] whitespace-nowrap">
-                Undo (Ctrl + Z)
-              </span>
+              <span className={tooltipClasses}>Undo (Ctrl + Z)</span>
             </button>
 
             <button
@@ -76,9 +91,7 @@ export default function DrawingBoard() {
               className={`relative group flex items-center justify-center ${buttonHeight} bg-gray-300 text-black px-4 rounded shadow`}
             >
               <AiOutlineRedo size={20} />
-              <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black text-white text-xs rounded px-2 py-1 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-[300ms] whitespace-nowrap">
-                Redo (Ctrl + Shift + Z)
-              </span>
+              <span className={tooltipClasses}>Redo (Ctrl + Shift + Z)</span>
             </button>
           </div>
 
@@ -94,9 +107,7 @@ export default function DrawingBoard() {
               onKeyDown={(e) => e.stopPropagation()}
               className="w-0 h-0 opacity-0"
             />
-            <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black text-white text-xs rounded px-2 py-1 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-[300ms] whitespace-nowrap">
-              Change Pen Color
-            </span>
+            <span className={tooltipClasses}>Change Pen Color</span>
           </label>
 
           {/* Pen Size */}
@@ -107,9 +118,7 @@ export default function DrawingBoard() {
             >
               Size: {penSize}
             </button>
-            <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black text-white text-xs rounded px-2 py-1 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-[300ms] whitespace-nowrap">
-              Select Pen Size
-            </span>
+            <span className={tooltipClasses}>Select Pen Size</span>
             {showPenDropdown && (
               <div className="absolute mt-1 border-2 border-gray-300 rounded shadow bg-white z-10">
                 {penSizes.map((size) => (
@@ -133,6 +142,7 @@ export default function DrawingBoard() {
             >
               Background: {background.charAt(0).toUpperCase() + background.slice(1)}
             </button>
+            <span className={tooltipClasses}>Select Background</span>
             {showBackgroundDropdown && (
               <div className="absolute mt-1 border-2 border-gray-300 rounded shadow bg-white z-10">
                 {["white", "black", "grid", "checkerboard"].map((bg) => (
@@ -154,9 +164,7 @@ export default function DrawingBoard() {
             className={`relative group flex items-center justify-center ${buttonHeight} px-4 bg-gray-300 rounded shadow text-black`}
           >
             <AiOutlineDownload size={18} />
-            <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black text-white text-xs rounded px-2 py-1 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-[300ms] whitespace-nowrap">
-              Save as JPEG
-            </span>
+            <span className={tooltipClasses}>Save as JPEG</span>
           </button>
 
           {/* Info / GitHub Button */}
@@ -165,9 +173,7 @@ export default function DrawingBoard() {
             className={`relative group flex items-center justify-center ${buttonHeight} px-3 bg-gray-300 rounded shadow text-black`}
           >
             <FiInfo size={20} />
-            <span className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black text-white text-xs rounded px-2 py-1 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-[300ms] whitespace-nowrap">
-              Source Code
-            </span>
+            <span className={tooltipClasses}>Source Code</span>
           </button>
         </div>
       </div>

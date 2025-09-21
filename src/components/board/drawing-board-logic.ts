@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useWebSocket } from "@/context/websocket-context";
 import { drawStroke, drawLastPoint, redrawAll } from "@/components/board/canvas-utils";
 
@@ -82,23 +82,23 @@ export function useDrawingBoard() {
 
 
   // ---- Undo / Redo ----
-  const undo = () => {
+  const undo = useCallback(() => {
     if (myUndoStack.current.length === 0) return;
     const stroke = myUndoStack.current.pop()!;
     strokesRef.current = strokesRef.current.filter(s => s.strokeId !== stroke.strokeId);
     myRedoStack.current.push(stroke);
     redrawAll(ctxRef.current!, strokesRef.current, backgroundRef.current);
     sendWSMessage(JSON.stringify({ type: "undo", strokeId: stroke.strokeId }));
-  };
+  }, [sendWSMessage]);
 
-  const redo = () => {
+  const redo = useCallback(() => {
     if (myRedoStack.current.length === 0) return;
     const stroke = myRedoStack.current.pop()!;
     strokesRef.current.push(stroke);
     myUndoStack.current.push(stroke);
     redrawAll(ctxRef.current!, strokesRef.current, backgroundRef.current);
     sendWSMessage(JSON.stringify({ type: "redo", strokeId: stroke.strokeId }));
-  };
+  }, [sendWSMessage]);
 
 
   // ---- Keyboard shortcuts: undo/redo/save ----
@@ -107,7 +107,11 @@ export function useDrawingBoard() {
       // Undo / Redo
       if (e.ctrlKey && e.key.toLowerCase() === "z") {
         e.preventDefault(); // Prevent browser undo of inputs
-        e.shiftKey ? redo() : undo();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
       }
 
       // Save
